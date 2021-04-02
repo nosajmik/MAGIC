@@ -65,35 +65,9 @@ class DGCNN(nn.Module):
                                          out_channels=conv2dChannel,
                                          kernel_size=13, stride=1, padding=6)
             self.adptPl = nn.AdaptiveMaxPool2d((self.k, self.totalLatentDim))
-        else:
-            log.info(f'Unify graph sizes with SORT pooling')
-            self.endingLayers = endingLayers
-            if endingLayers == 'weight_vertices':
-                log.info(f'Ending with weight vertices layers')
-                self.vertexParams = nn.Conv1d(in_channels=1, out_channels=1,
-                                              kernel_size=self.k, stride=self.k)
-                self.denseDim = self.totalLatentDim
-            else:  # conv1d if not specified
-                log.info(f'Ending with conv1d since remLayers not specified')
-                self.conv1dParams1 = nn.Conv1d(in_channels=1,
-                                               out_channels=conv1dChannels[0],
-                                               kernel_size=conv1dKernSz[0],
-                                               stride=conv1dKernSz[0])
-                self.maxPool1d = nn.MaxPool1d(kernel_size=conv1dMaxPl[0],
-                                              stride=conv1dMaxPl[1])
-                self.conv1dParams2 = nn.Conv1d(in_channels=conv1dChannels[0],
-                                               out_channels=conv1dChannels[1],
-                                               kernel_size=conv1dKernSz[1])
-                tmp = int((k - conv1dMaxPl[0]) / conv1dMaxPl[1] + 1)
-                self.denseDim = (tmp - conv1dKernSz[1] + 1) * conv1dChannels[1]
-
-            if numEdgeFeats > 0:
-                self.wE2L = nn.Linear(numEdgeFeats, latentDims)
-
-            if outputDim > 0:
-                self.outParams = nn.Linear(self.denseDim, outputDim)
 
         weights_init(self)
+
 
     def forward(self, graphs, nodeFeats, edgeFeats):
         graphSizes = [graphs[i].num_nodes for i in range(len(graphs))]
@@ -118,12 +92,7 @@ class DGCNN(nn.Module):
                                           n2nSp, e2nSp, graphSizes, nodeDegs)
         if self.poolingType == 'adaptive':
             return self.adptivePoolLayer(convGraphs, nodeFeats, graphSizes)
-        else:
-            spGraphs = self.sortPoolLayer(convGraphs, nodeFeats, graphSizes)
-            if self.endingLayers == 'weight_vertices':
-                return self.weightVerticesLayers(spGraphs, len(graphSizes))
-            else:
-                return self.conv1dLayers(spGraphs, len(graphSizes))
+
 
     def graphConvLayers(self, nodeFeats, edgeFeats, n2nSp, e2nSp,
                         graphSizes, nodeDegs):
@@ -148,6 +117,7 @@ class DGCNN(nn.Module):
 
         return torch.cat(msgLayers, 1)
 
+
     def adptivePoolLayer(self, convGraphs, nodeFeats, graphSizes):
         apGraphs = torch.zeros(len(graphSizes), self.conv2dParam.out_channels,
                                self.k, self.totalLatentDim)
@@ -165,66 +135,3 @@ class DGCNN(nn.Module):
             graphIdx += graphSizes[i]
 
         return apGraphs
-
-    def sortPoolLayer(self, convGraphs, nodeFeats, graphSizes):
-        """sortpooling layer"""
-        sortChannel = convGraphs[:, -1]
-        spGraphs = torch.zeros(len(graphSizes), self.k, self.totalLatentDim)
-        if isinstance(nodeFeats.data, torch.cuda.FloatTensor):
-            spGraphs = spGraphs.cuda()
-
-        spGraphs = Variable(spGraphs)
-        graphIdx = 0
-        for i in range(len(graphSizes)):
-            to_sort = sortChannel[graphIdx:graphIdx + graphSizes[i]]
-            k = self.k if self.k <= graphSizes[i] else graphSizes[i]
-            _, topkIndices = to_sort.topk(k)
-            topkIndices += graphIdx
-            sortpoolGraph = convGraphs.index_select(0, topkIndices)
-            if k < self.k:
-                toPadZero = torch.zeros(self.k - k, self.totalLatentDim)
-                if isinstance(nodeFeats.data, torch.cuda.FloatTensor):
-                    toPadZero = toPadZero.cuda()
-
-                toPadZero = Variable(toPadZero)
-                sortpoolGraph = torch.cat((sortpoolGraph, toPadZero), 0)
-
-            spGraphs[i] = sortpoolGraph
-            graphIdx += graphSizes[i]
-
-        return spGraphs
-
-    def conv1dLayers(self, spGraphs, numGraphs):
-        """traditional 1d convlution and dense layers"""
-        toConv1d = spGraphs.view((-1, 1, self.k * self.totalLatentDim))
-        conv1dRes = self.conv1dParams1(toConv1d)
-        conv1dRes = F.relu(conv1dRes)
-        conv1dRes = self.maxPool1d(conv1dRes)
-        conv1dRes = self.conv1dParams2(conv1dRes)
-        conv1dRes = F.relu(conv1dRes)
-
-        toDense = conv1dRes.view(numGraphs, -1)
-        if self.outputDim == 0:
-            return toDense
-        else:
-            outputLinear = self.outParams(toDense)
-            return F.relu(outputLinear)
-
-    def weightVerticesLayers(self, spGraphs, numGraphs):
-        transposeGraphs = torch.zeros(numGraphs, self.totalLatentDim, self.k)
-        if isinstance(spGraphs.data, torch.cuda.FloatTensor):
-            transposeGraphs = transposeGraphs.cuda()
-
-        for i in range(spGraphs.size()[0]):
-            transposeGraphs[i] = torch.t(spGraphs[i])
-
-        toConv1d = transposeGraphs.view((-1, 1, self.k * self.totalLatentDim))
-        aggrgatedVertices = self.vertexParams(toConv1d)
-
-        toDense = aggrgatedVertices.view(numGraphs, -1)
-        if self.outputDim == 0:
-            return toDense
-        else:
-            toDense = F.relu(toDense)
-            outputLinear = self.outParams(toDense)
-            return F.relu(outputLinear)

@@ -19,7 +19,7 @@ model_date=04-Dec-2018-16:22:09
 # model_date=04-Dec-2018-14:55:34
 # model_date=04-Dec-2018-08:16:52
 
-CUDA_VISIBLE_DEVICES=${GPU} python3.7 pretrain_model.py     \
+CUDA_VISIBLE_DEVICES=${GPU} python3 pretrain_model.py     \
   -seed 1                                                   \
   -data ${DATA}                                             \
   -train_dir ${train_dir}                                   \

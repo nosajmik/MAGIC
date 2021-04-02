@@ -13,7 +13,6 @@ import numpy as np
 from tqdm import tqdm
 from dgcnn_embedding import DGCNN
 from typing import Dict, List
-from mlp_dropout import MLPClassifier, RecallAtPrecision, LogisticRegression
 from embedding import EmbedMeanField, EmbedLoopyBP
 from ml_utils import cmd_args, gHP, S2VGraph
 from graph_vgg import getGraphVggBn
@@ -23,45 +22,23 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         nodeFeatDim = gHP['featureDim'] + gHP['nodeTagDim']
         if gHP['poolingType'] == 'adaptive':
+            # s2v is DGCNN: turns ACFG into 'image'
             self.s2v = DGCNN(latentDims=gHP['graphConvSize'],
                              outputDim=gHP['s2vOutDim'],
                              numNodeFeats=nodeFeatDim,
                              k=gHP['poolingK'],
                              conv2dChannel=gHP['conv2dChannels'],
                              poolingType=gHP['poolingType'])
+            # gHP is graph hyperparameters
             gHP['vggInputDim'] = (gHP['poolingK'],
                                   self.s2v.totalLatentDim,
                                   gHP['conv2dChannels'])
+            # mlp used to be multi-layer perceptron, but is VGGnet now
             self.mlp = getGraphVggBn(inputDims=gHP['vggInputDim'],
                                      hidden=gHP['mlpHidden'],
                                      numClasses=gHP['numClasses'],
                                      dropOutRate=gHP['dropOutRate'])
-        else:
-            self.s2v = DGCNN(latentDims=gHP['graphConvSize'],
-                             outputDim=gHP['s2vOutDim'],
-                             numNodeFeats=nodeFeatDim,
-                             k=gHP['poolingK'],
-                             poolingType='sort',
-                             endingLayers=gHP['remLayers'],
-                             conv1dChannels=gHP['convChannels'],
-                             conv1dKernSz=gHP['convKernSizes'],
-                             conv1dMaxPl=gHP['convMaxPool'])
-            if gHP['s2vOutDim'] == 0:
-                gHP['s2vOutDim'] = self.s2v.denseDim
 
-            if gHP['mlpType'] == 'rap':
-                self.mlp = RecallAtPrecision(input_size=gHP['s2vOutDim'],
-                                             hidden_size=gHP['mlpHidden'],
-                                             alpha=0.6,
-                                             dropout=gHP['dropOutRate'])
-            elif gHP['mlpType'] == 'logistic_reg':
-                self.mlp = LogisticRegression(input_size=gHP['s2vOutDim'],
-                                              num_labels=gHP['numClasses'])
-            else:
-                self.mlp = MLPClassifier(input_size=gHP['s2vOutDim'],
-                                         hidden_size=gHP['mlpHidden'],
-                                         num_class=gHP['numClasses'],
-                                         dropout=gHP['dropOutRate'])
 
     def _prepareFeatureLabel(self, batch_graph):
         labels = torch.LongTensor(len(batch_graph))
@@ -119,43 +96,29 @@ class Classifier(nn.Module):
 
         return node_feat, labels
 
+
     def forward(self, batch_graph):
         node_feat, labels = self._prepareFeatureLabel(batch_graph)
         embed = self.s2v(batch_graph, node_feat, edgeFeats=None)
         return self.mlp(embed, labels)
 
+
     def embedding(self, graphs):
         node_feat, _ = self._prepareFeatureLabel(graphs)
         return self.s2v(graphs, node_feat, edgeFeats=None)
+
 
     def predict(self, testGraphs):
         nodeFeature, _ = self._prepareFeatureLabel(testGraphs)
         embed = self.s2v(testGraphs, nodeFeature, edgeFeats=None)
         return self.mlp(embed)
 
-    def sgdModel(self, optimizer, batch_graph, pos):
-        if cmd_args.mlp_type == 'rap':
-            for p in self.parameters():
-                p.requires_grad_(True)
-            self.mlp.lam.requires_grad_(False)
-            optimizer.zero_grad()
-            loss, acc, pred = self.forward(batch_graph)
-            loss.backward()
-            optimizer.step()
 
-            if pos != 0 and pos % 5 == 0:
-                for p in self.parameters():
-                    p.requires_grad_(False)
-                self.mlp.lam.requires_grad_(True)
-                optimizer.zero_grad()
-                loss, acc, pred = self.forward(batch_graph)
-                loss.backward()
-                optimizer.step()
-        else:
-            optimizer.zero_grad()
-            loss, acc, pred = self.forward(batch_graph)
-            loss.backward()
-            optimizer.step()
+    def sgdModel(self, optimizer, batch_graph, pos):
+        optimizer.zero_grad()
+        loss, acc, pred = self.forward(batch_graph)
+        loss.backward()
+        optimizer.step()
 
 
 def loopDataset(gList: List[S2VGraph], classifier: Classifier,
