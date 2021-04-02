@@ -55,7 +55,7 @@ class GraphVgg(nn.Module):
             accu = (correct.sum().item()) / float(correct.size(0))
             return loss, accu, pred
         else:
-            log.debug('[MLPRegression] None label, return only predictions.')
+            log.debug('None label, return only predictions.')
             return predProb
 
     def print_result_dict(self):

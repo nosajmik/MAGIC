@@ -13,7 +13,6 @@ import numpy as np
 from tqdm import tqdm
 from dgcnn_embedding import DGCNN
 from typing import Dict, List
-from embedding import EmbedMeanField, EmbedLoopyBP
 from ml_utils import cmd_args, gHP, S2VGraph
 from graph_vgg import getGraphVggBn
 
@@ -29,7 +28,7 @@ class Classifier(nn.Module):
                              k=gHP['poolingK'],
                              conv2dChannel=gHP['conv2dChannels'],
                              poolingType=gHP['poolingType'])
-            # gHP is graph hyperparameters
+            # gHP is global hyperparameters
             gHP['vggInputDim'] = (gHP['poolingK'],
                                   self.s2v.totalLatentDim,
                                   gHP['conv2dChannels'])

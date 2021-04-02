@@ -52,17 +52,6 @@ gHP = dict()
 cmd_args, _ = cmd_opt.parse_known_args()
 cmd_args.use_cached_data = (cmd_args.use_cached_data == "True")
 log.info("Parsed cmdline arguments: %s" % cmd_args)
-testBinaryIds = {
-    'cqdUoQDaZfGkt5ilBe7n': 0,
-    'jgOs7KiB0aTEzvSUJVPp': 1,
-    '6RQtx0X42zOelTDaZnvi': 2,
-    'HaTioeY3kbvJW2LXtOwF': 3,
-    'Fnda3PuqJT6Ep5vjOWCk': 4,
-    'exGy3iaKJmRprdHcB0NO': 5,
-    'bZz2OoQmqx0PdGBhaHKk': 6,
-    '0Q4ALVSRnlHUBjyOb1sw': 7,
-    'hIkK1vBdj9fDJPcUWzA8': 8,
-}
 
 
 class S2VGraph(object):
@@ -126,10 +115,6 @@ def loadData(dataDir: str, isTestSet: bool = False) -> List[S2VGraph]:
         if not isTestSet:
             label = int(row[1]) - 1
             numClasses = max(numClasses, label + 1)
-
-        if bId in testBinaryIds:
-            log.debug(f'[Test {bId}]{label} =? {testBinaryIds[bId]}')
-            assert label == testBinaryIds[bId]
 
         g = nx.Graph()
         nodeTags = []
@@ -314,6 +299,8 @@ def computePrScores(pred, labels, prefix: str = 'train',
                     avgMethod: str ='weighted',
                     store=False) -> Dict[str, float]:
     scores = {}
+
+    # JASON-TODO change the label space
     if cmd_args.data == 'MSACFG':
         scores['family'] = [
             'Ramnit', 'Lollipop', 'KeliVer3', 'Vundo', 'Simda', 'Tracur',
