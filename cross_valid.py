@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import torch.optim as optim
 from typing import Dict, List
-from ml_utils import cmd_args, gHP, S2VGraph, normalizeFeatures
-from ml_utils import loadGraphsMayCache, kFoldSplit, getLearningRate
+from ml_utils import cmd_args, gHP, S2VGraph, normalizeFeatures, filterOutNoEdgeGraphs
+from ml_utils import loadGraphsMayCache, kFoldSplit, getLearningRate, loadModel
 from e2e_model import Classifier, loopDataset
 from hyperparameters import HyperParameterIterator, parseHpTuning
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     startTime = time.process_time()
     graphs = loadGraphsMayCache(cmd_args.train_dir)
     normalizeFeatures(graphs, isTestSet=False, operation=cmd_args.norm_op)
-    trainGraphs = filterOutNoEdgeGraphs(trainGraphs)
+    trainGraphs = filterOutNoEdgeGraphs(graphs)
     dataReadyTime = time.process_time() - startTime
     log.info('Dataset ready takes %.2fs' % dataReadyTime)
 

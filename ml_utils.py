@@ -111,9 +111,13 @@ def loadData(dataDir: str, isTestSet: bool = False) -> List[S2VGraph]:
     maxVector, minVector, avgVector, stdVector = None, None, None, None
     for i in range(numGraphs):
         row = f.readline().strip().split()
-        numNodes, label, bId = int(row[0]), row[1], row[2]
+        numNodes, label, bId = int(row[0]), row[1], i
         if not isTestSet:
-            label = int(row[1]) - 1
+            label = int(row[1])
+            # Fix specifically for my dataset, because
+            # VGGnet uses NLLLoss
+            if label == -1:
+                label = 0
             numClasses = max(numClasses, label + 1)
 
         g = nx.Graph()
