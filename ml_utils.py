@@ -9,6 +9,7 @@ import time
 import torch
 import math
 import glob
+import os
 import numpy as np
 import pandas as pd
 import glog as log
@@ -372,6 +373,7 @@ def toOnehot(indices, num_classes):
 
 def saveModel(classifier, msg: str = ''):
     dateStr = time.strftime("%d-%b-%Y-%H:%M:%S", time.localtime())
+    os.makedirs(cmd_args.data.lower() + '_models/')
     modelPath = cmd_args.data.lower() + '_models/' + dateStr + msg + '.pt'
     torch.save(classifier.state_dict(), modelPath)
     log.info(f'Model state is saved to {modelPath}')
