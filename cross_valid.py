@@ -112,7 +112,7 @@ def crossValidate(graphFolds: List[List[S2VGraph]], runId: int) -> None:
                 trainGraphs.extend(graphFolds[i])
 
         hist = trainThenValid(trainGraphs, validGraphs, '%d-%d' % (runId, f))
-        cvMetrics.append(hist)e = 
+        cvMetrics.append(hist)
 
     avgMetrics = averageMetrics(cvMetrics)
     df = pd.DataFrame.from_dict(avgMetrics)
