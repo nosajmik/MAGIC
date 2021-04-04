@@ -58,7 +58,7 @@ def trainThenValid(trainGraphs: List[S2VGraph], validGraphs: List[S2VGraph],
         validLossHist.append(validScore[0])
         validAccuHist.append(validScore[1])
 
-        if validScore[0] < 0.04 or e % 10 == 0:
+        if validScore[0] < 0.04 or i % 10 == 0:
             log.info(f'Save model with {validScore[0]} validation loss.')
             saveModel(classifier, msg='_vl%.6f' % validScore[0])
             storeConfusionMatrix(trainPred, trainLabels, 'train_e%d' % e)
@@ -112,7 +112,7 @@ def crossValidate(graphFolds: List[List[S2VGraph]], runId: int) -> None:
                 trainGraphs.extend(graphFolds[i])
 
         hist = trainThenValid(trainGraphs, validGraphs, '%d-%d' % (runId, f))
-        cvMetrics.append(hist)
+        cvMetrics.append(hist)e = 
 
     avgMetrics = averageMetrics(cvMetrics)
     df = pd.DataFrame.from_dict(avgMetrics)
