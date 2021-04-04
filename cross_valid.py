@@ -62,10 +62,10 @@ def trainThenValid(trainGraphs: List[S2VGraph], validGraphs: List[S2VGraph],
         if validScore[0] < 0.04 or i % 10 == 0:
             log.info(f'Save model with {validScore[0]} validation loss.')
             saveModel(classifier, msg='_vl%.6f' % validScore[0])
-            storeConfusionMatrix(trainPred, trainLabels, 'train_e%d' % e)
-            storeConfusionMatrix(validPred, validLabels, 'valid_e%d' % e)
-            computePrScores(trainPred, trainLabels, 'train_e%d' % e, None, store=True)
-            computePrScores(validPred, validLabels, 'valid_e%d' % e, None, store=True)
+            storeConfusionMatrix(trainPred, trainLabels, 'train_e%d' % i)
+            storeConfusionMatrix(validPred, validLabels, 'valid_e%d' % i)
+            computePrScores(trainPred, trainLabels, 'train_e%d' % i, None, store=True)
+            computePrScores(validPred, validLabels, 'valid_e%d' % i, None, store=True)
 
     log.info(f'Net training time = {time.process_time() - startTime} seconds')
     hist = {}

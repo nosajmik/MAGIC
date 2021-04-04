@@ -7,7 +7,7 @@ HP_PATH="${3-msacfg.hp}" # full_gpu${GPU}.hp
 # general/default settings
 gpu_or_cpu=cpu
 train_dir=./${DATA}
-use_cached_data=False
+use_cached_data=True
 cache_path=cached_${DATA,,}_graphs
 norm_path=norm_${DATA,,}
 
